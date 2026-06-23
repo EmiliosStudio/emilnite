@@ -47,18 +47,22 @@
             box-sizing: border-box;
         }
 
+        /* Cabecera ajustada para dar más espacio vertical */
         .brand-header {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 12px;
-            margin-bottom: 10px;
-            height: 60px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            min-height: 120px; /* Incrementado para que quepa el logo grande */
         }
 
+        /* Imagen de marca configurada entre 3 y 4 veces más grande */
         .brand-text {
-            height: 100%;
-            width: auto;
+            height: auto;
+            width: 80%; /* Ocupa la mayor parte del ancho del panel contenedor */
+            max-width: 500px; /* Límite para que mantenga una proporción estética impecable */
             object-fit: contain;
         }
 
@@ -387,7 +391,7 @@
 <body>
 
     <div class="spotify-container">
-        <!-- Cabecera limpia mostrando solo texto_logo.png -->
+        <!-- Cabecera limpia mostrando texto_logo.png a gran escala -->
         <div class="brand-header">
             <img src="texto_logo.png" alt="EmilNite Stream Studio" class="brand-text">
         </div>
