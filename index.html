@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EmilNite Stream Studio</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap');
+
         :root {
             --bg-main: #07050f;
             --panel-bg: #120e24;
@@ -18,7 +20,7 @@
         body {
             margin: 0;
             padding: 10px;
-            font-family: 'Segoe UI', system-ui, sans-serif;
+            font-family: 'Google Sans', 'Segoe UI', system-ui, sans-serif;
             background: var(--bg-main);
             color: var(--text-main);
             height: 100vh;
@@ -43,15 +45,25 @@
             box-sizing: border-box;
         }
 
-        h1 {
-            font-size: 1.8rem;
-            margin: 0 0 4px 0;
-            text-align: center;
-            background: linear-gradient(45deg, var(--accent), #9d4edf);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 800;
-            letter-spacing: 1px;
+        .brand-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            height: 60px;
+        }
+
+        .brand-logo {
+            height: 100%;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .brand-text {
+            height: 75%;
+            width: auto;
+            object-fit: contain;
         }
 
         .vlc-total-time {
@@ -347,11 +359,12 @@
             align-items: center;
             gap: 15px;
             justify-content: center;
+            flex-wrap: wrap;
         }
 
         audio {
             flex: 1;
-            max-width: 500px;
+            max-width: 400px;
             height: 40px;
         }
 
@@ -378,7 +391,10 @@
 <body>
 
     <div class="spotify-container">
-        <h1>EmilNite Stream Studio</h1>
+        <div class="brand-header">
+            <img src="logo.png" alt="Logo" class="brand-logo">
+            <img src="texto_foto.png" alt="EmilNite Stream Studio" class="brand-text">
+        </div>
         
         <div class="vlc-total-time">Duración total de la lista: <span id="total-playlist-time">00:00:00</span></div>
 
@@ -390,6 +406,8 @@
             
             <label for="load-list" class="btn" style="border-color: var(--accent);">📂 Cargar Proyecto (.list)</label>
             <input type="file" id="load-list" accept=".list">
+
+            <a href="ayuda.html" class="btn" style="text-decoration: none; border-color: var(--accent-dim); background: rgba(0, 242, 254, 0.03);">❓ Soporte</a>
         </div>
 
         <div class="loading-status-zone">
@@ -416,6 +434,7 @@
             <div class="player-row">
                 <button class="btn btn-toggle" id="btn-shuffle">🔀 Aleatorio: OFF</button>
                 
+                <button class="btn" id="btn-sos-audio" style="background: #ff0055; color: white; box-shadow: 0 0 10px rgba(255,0,85,0.4); border: none;">⚠️ Desbloquear Audio</button>
                 <audio id="chrome-audio" controls></audio>
                 
                 <button class="btn" id="btn-next">⏭ Next</button>
@@ -437,6 +456,7 @@
         const loadSpinner = document.getElementById('load-spinner');
         const loadText = document.getElementById('load-text');
         const totalPlaylistTime = document.getElementById('total-playlist-time');
+        const btnSosAudio = document.getElementById('btn-sos-audio');
 
         let playlist = []; 
         let currentIndex = -1;
@@ -444,16 +464,14 @@
         let isChangingTrack = false; 
         let fadeDuration = 4; 
 
-        // --- ENRUTAMIENTO WEB AUDIO API (INMUNE AL SEGUNDO PLANO) ---
         let audioCtx = null;
         let audioSource = null;
         let gainNode = null;
-        let crossfadeTimeout = null; // Guardián por si acaso
+        let crossfadeTimeout = null;
 
         function initAudioContext() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                // Conectamos la etiqueta <audio> nativa al nodo de ganancia por hardware
                 audioSource = audioCtx.createMediaElementSource(chromeAudio);
                 gainNode = audioCtx.createGain();
                 audioSource.connect(gainNode);
@@ -464,7 +482,6 @@
         crossfadeTime.addEventListener('input', (e) => {
             fadeDuration = parseInt(e.target.value);
             cfLabel.textContent = `${fadeDuration}s`;
-            // Si movemos el slider mientras suena, recalculamos el disparo
             if (!chromeAudio.paused && !isChangingTrack) {
                 programHardwareCrossfade();
             }
@@ -600,9 +617,8 @@
         window.setTrack = function(idx, forcePlay = false) {
             if (idx < 0 || idx >= playlist.length) return;
 
-            initAudioContext(); // Asegura activar el Web Audio Context
+            initAudioContext();
 
-            // Limpiamos órdenes de automatización previas
             if (gainNode) {
                 gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
                 gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
@@ -623,16 +639,19 @@
             }
 
             if (forcePlay) {
-                if (audioCtx.state === 'suspended') audioCtx.resume();
-                chromeAudio.play().catch(e => console.log("Streaming background activado"));
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume();
+                }
+                chromeAudio.play().catch(e => {
+                    console.log("Streaming background activado");
+                    setTimeout(() => { chromeAudio.play(); }, 500);
+                });
             }
         };
 
-        // --- PROGRAMACIÓN HARDWARE DEL CROSSFADE ---
-        // Este método le dice a la tarjeta de sonido cuándo bajar el volumen exactamente
         function programHardwareCrossfade() {
             if (!gainNode || isChangingTrack || playlist.length <= 1) return;
-            if ((currentIndex + 1) >= playlist.length) return; // Última canción no hace crossfade
+            if ((currentIndex + 1) >= playlist.length) return;
 
             const currentCtxTime = audioCtx.currentTime;
             const duration = chromeAudio.duration;
@@ -643,22 +662,18 @@
             const timeLeft = duration - currentAudioTime;
             const fadeStartTimeInCtx = currentCtxTime + (timeLeft - fadeDuration);
 
-            // Reseteamos volumen al original por si acaso
             gainNode.gain.cancelScheduledValues(currentCtxTime);
             gainNode.gain.setValueAtTime(gainNode.gain.value, currentCtxTime);
 
-            // Programamos la rampa de bajada lineal exacta en el hardware del equipo
             if (timeLeft > fadeDuration) {
                 gainNode.gain.setValueAtTime(1.0, fadeStartTimeInCtx);
                 gainNode.gain.linearRampToValueAtTime(0.0, currentCtxTime + timeLeft);
             } else {
-                // Si ya estamos metidos dentro del tiempo de fundido, baja desde el punto actual
                 let ratio = timeLeft / fadeDuration;
                 gainNode.gain.setValueAtTime(ratio, currentCtxTime);
                 gainNode.gain.linearRampToValueAtTime(0.0, currentCtxTime + timeLeft);
             }
 
-            // Programamos el salto físico de pista justo 0.2s antes del final absoluto
             if (crossfadeTimeout) clearTimeout(crossfadeTimeout);
             crossfadeTimeout = setTimeout(() => {
                 if (!chromeAudio.paused && !isChangingTrack) {
@@ -668,7 +683,6 @@
             }, Math.max(0, (timeLeft - 0.2) * 1000));
         }
 
-        // Activamos la automatización en cuanto la canción empiece a reproducirse
         chromeAudio.addEventListener('play', () => { 
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             renderPlaylist(); 
@@ -684,7 +698,6 @@
             renderPlaylist(); 
         });
 
-        // Este evento sirve de soporte para refrescar si mueves la barra del reproductor manualmente
         chromeAudio.addEventListener('seeking', () => {
             if (!chromeAudio.paused) programHardwareCrossfade();
         });
@@ -807,6 +820,20 @@
                 }
             };
             reader.readAsText(file);
+        });
+
+        btnSosAudio.addEventListener('click', async () => {
+            if (!audioCtx) {
+                initAudioContext();
+            }
+            if (audioCtx) {
+                await audioCtx.resume();
+            }
+            chromeAudio.play().then(() => {
+                alert("¡Audio desbloqueado con éxito! Motor en marcha 🚀");
+            }).catch(err => {
+                alert("Motor reactivado. Selecciona una canción de la lista para empezar a transmitir.");
+            });
         });
     </script>
 </body>
